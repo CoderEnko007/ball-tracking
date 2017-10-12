@@ -13,6 +13,10 @@ green_lower = (29, 86, 6)
 green_upper = (64, 255, 255)
 pts = deque(maxlen=args["buffer"])
 
+contour = 0
+(dX, dY) = (0, 0)
+direction = ""
+
 
 if not args.get("video", False):
     camera = cv2.VideoCapture(0)
@@ -44,14 +48,32 @@ while True:
             cv2.circle(frame, (int(x), int(y)), int(radius), (0, 255, 255), 2)
             cv2.circle(frame, center, 5, (0, 0, 255), -1)
             # cv2.circle(frame, (int(x), int(y)), 5, (255, 0, 0), -1)
-    pts.appendleft(center)
+            pts.appendleft(center)
 
     for i in xrange(1, len(pts)):
         if pts[i - 1] is None or pts[i] is None:
             continue
+
+        if contour >= 10 and i == 1 and len(pts) == args["buffer"] and pts[-10] is not None :
+            dX = pts[-10][0] - pts[1][0]
+            dY = pts[-10][1] - pts[1][1]
+            (dirX, dirY) = ("", "")
+            if np.abs(dX) > 20:
+                dirX = "East" if np.sign(dX) == 1 else "West"
+            if np.abs(dY) > 20:
+                dirY = "North" if np.sign(dY) == 1 else "South"
+            if dirX != "" and dirY != "":
+                direction = "{}-{}".format(dirY, dirX)
+            else:
+                direction = dirX if dirX != "" else dirY
+
         thickness = int(np.sqrt(args["buffer"] / float(i+1)) * 2.5)
         cv2.line(frame, pts[i - 1], pts[i], (0, 0, 255), thickness)
 
+    cv2.putText(frame, direction, (10, 30), cv2.FONT_HERSHEY_COMPLEX, 0.65, (0, 0, 255), 3)
+    cv2.putText(frame, "dx:{}, dy:{}".format(dX, dY), (10, frame.shape[0]-10),
+                cv2.FONT_HERSHEY_COMPLEX, 0.35, (0, 0, 255), 1)
+    contour += 1
     cv2.imshow("frame", frame)
     key = cv2.waitKey(1) & 0xFF
     if key == ord('q'):
